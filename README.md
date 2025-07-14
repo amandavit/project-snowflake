@@ -1,1 +1,150 @@
-# project-snowflake
+## project-snowflake
+
+### Objetivo
+Criar um pequeno dataset com comandos SQL utilizando Snowflake.
+
+### Código Criado
+
+```bash
+USE DATABASE SNOWFLAKE_LEARNING_DB;
+CREATE OR REPLACE SCHEMA ECOMMERCE_DW;
+USE SCHEMA ECOMMERCE_DW;
+
+-- Dimensão Produto --  
+
+CREATE OR REPLACE TABLE DIM_PRODUCT (
+    PRODUCT_ID INTEGER,
+    PRODUCT_NAME STRING,
+    CATEGORY STRING,
+    PRICE NUMBER(10,2)
+);
+
+INSERT INTO DIM_PRODUCT (PRODUCT_ID, PRODUCT_NAME, CATEGORY, PRICE)
+
+SELECT 
+    SEQ4(), -- Gera IDs únicos (0, 1, 2, 3...)
+    RANDSTR(10, RANDOM()),  -- Gera string aleatória com 10 caracteres
+    'Electronics',  -- Categoria fixa
+    UNIFORM(100, 1000, RANDOM()) -- Preço aleatório entre 100 e 1000
+    
+FROM TABLE(GENERATOR(ROWCOUNT => 10)); -- Cria 10 linhas
+
+-- Dimensão Cliente --
+
+CREATE OR REPLACE TABLE DIM_CUSTOMER (
+    CUSTOMER_ID INTEGER,
+    GENDER STRING,
+    AGE INTEGER,
+    COUNTRY STRING
+);
+
+INSERT INTO DIM_CUSTOMER (CUSTOMER_ID, GENDER, AGE, COUNTRY)
+SELECT
+    7001 + SEQ4(),
+    CASE WHEN UNIFORM(0, 2, RANDOM()) = 0 THEN 'Male' ELSE 'Female' END,
+    UNIFORM(18, 81, RANDOM()),
+    CASE UNIFORM(1, 5, RANDOM())
+        WHEN 1 THEN 'USA'
+        WHEN 2 THEN 'Canada'
+        WHEN 3 THEN 'UK'
+        WHEN 4 THEN 'Brazil'
+    END
+FROM TABLE(GENERATOR(ROWCOUNT => 30));
+
+    
+-- Dimensão Data
+
+CREATE OR REPLACE TABLE DIM_DATE (
+    DATE_ID DATE,
+    DAY_OF_WEEK STRING,
+    MONTH STRING,
+    YEAR INTEGER
+);
+
+INSERT INTO DIM_DATE (DATE_ID, DAY_OF_WEEK, MONTH, YEAR)
+SELECT
+    DATEADD(DAY, SEQ4(), '2025-01-01'),
+    DAYNAME(DATEADD(DAY, SEQ4(), '2025-01-01')),
+    MONTHNAME(DATEADD(DAY, SEQ4(), '2025-01-01')),
+    YEAR(DATEADD(DAY, SEQ4(), '2025-01-01'))
+FROM TABLE(GENERATOR(ROWCOUNT => 365));
+    
+
+-- Fato Vendas
+
+CREATE OR REPLACE TABLE FACT_SALES (
+    SALE_ID INTEGER,
+    DATE_ID DATE,
+    PRODUCT_ID INTEGER,
+    CUSTOMER_ID INTEGER,
+    QUANTITY INTEGER,
+    TOTAL_AMOUNT NUMBER(10,2)
+);
+
+INSERT INTO FACT_SALES (SALE_ID, DATE_ID, PRODUCT_ID, CUSTOMER_ID, QUANTITY, TOTAL_AMOUNT)
+SELECT 
+    800001 + SEQ4() AS SALE_ID,
+    (SELECT DATE_ID FROM DIM_DATE ORDER BY RANDOM() LIMIT 1) AS DATE_ID,
+    (SELECT PRODUCT_ID FROM DIM_PRODUCT ORDER BY RANDOM() LIMIT 1) AS PRODUCT_ID,
+    (SELECT CUSTOMER_ID FROM DIM_CUSTOMER ORDER BY RANDOM() LIMIT 1) AS CUSTOMER_ID,
+    UNIFORM(1, 6, RANDOM()) AS QUANTITY,
+    UNIFORM(100, 1001, RANDOM()) AS TOTAL_AMOUNT
+FROM TABLE(GENERATOR(ROWCOUNT => 100));
+
+
+-- Visualizar
+SHOW TABLES;
+SELECT * FROM DIM_PRODUCT LIMIT 5;
+SELECT * FROM DIM_CUSTOMER LIMIT 5;
+SELECT * FROM DIM_DATE LIMIT 5;
+SELECT * FROM FACT_SALES LIMIT 5;
+```
+
+### Preview das tabelas criadas
+
+DIM_PRODUCT
+
+| PRODUCT_ID |	PRODUCT_NAME | CATEGORY | PRICE |
+|------------|---------------|----------|-----|
+|0| l4pnz7xKpI | Electronics |	902.00 |
+|1|	wG66NCuX1d | Electronics |	492.00 |
+|2|	DkVhKHC8UL | Electronics | 58.00 |
+|3|	B5KdGv3bjJ | Electronics | 986.00 |
+|4|	lESXgAxvWb | Electronics	| 898.00 |
+|5|	pQDfQIxnp4 |	Electronics	| 399.00 |
+
+
+DIM_CUSTOMER  
+
+| CUSTOMER_ID | GENDER | AGE | COUNTRY |
+| ------------|--------|-----|---------|
+|7001| Female|55|	USA|
+7002 | Female	|38|	USA|
+7003 |Male	|54	|UK|
+7004 |Female	|22 |null|
+7005 |Female	|42 |	UK |
+
+DIM_DATE
+
+DATE_ID |	DAY_OF_WEEK |	MONTH | YEAR
+|-------|--------|-----|---------|
+|2025-01-01|	Wed |	Jan |	2025
+|2025-01-02	|Thu |Jan |	2025
+|2025-01-03	|Fri |Jan	|2025
+|2025-01-04	|Sat |Jan	|2025
+|2025-01-05	|Sun |Jan	|2025
+
+FACT_SALES
+
+SALE_ID |	DATE_ID |	PRODUCT_ID |	CUSTOMER_ID	| QUANTITY	| TOTAL_AMOUNT
+|-------|---------|------------|--------------|-----------|--------------|
+|800001|	2025-07-29|	7|	7005|	4|	882.00
+|800002|	2025-07-29|	7|	7005|	3|	857.00
+|800003|	2025-07-29|	7| 7005 | 4|	450.00
+|800004|	2025-07-29|	7|	7005|	4|	764.00
+|800005|	2025-07-29|	7|	7005|	1|	983.00
+
+
+
+
+
